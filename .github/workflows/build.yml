@@ -1,0 +1,101 @@
+name: Build
+
+on:
+  push:
+      branches:
+        - main
+  pull_request:
+      branches:
+        - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: [ self-hosted, "${{ matrix.archconfig }}", go]
+    strategy:
+      matrix:
+        archconfig: [ x86_64, aarch64 ]
+      fail-fast: false
+    
+    steps:
+    - name: Cleanup previous jobs
+      run: |
+        echo "Cleaning up previous runs"
+        sudo rm -rf ${{ github.workspace }}/*
+        sudo rm -rf ${{ github.workspace }}/.??*
+        
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Display Go version
+      run: |
+        go version
+
+    - name: Find SHA
+      run: |
+        if [[ "${{github.event.pull_request.head.sha}}" != "" ]]
+        then
+          echo "ARTIFACT_SHA=$(echo ${{ github.event.pull_request.head.sha }})" >> $GITHUB_ENV
+          #echo "ARTIFACT_SHA=$(echo ${GITHUB_SHA})" >> $GITHUB_ENV
+        else
+          echo "ARTIFACT_SHA=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
+        fi
+
+    - name: Build bima binaries
+      run: |
+        mkdir -p ./dist
+        GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w" -ldflags "-w" -ldflags "-linkmode 'external' -extldflags '-static'" \
+          -ldflags "-X main.version=${VERSION}" -o ./dist/bima_x86_64 ./cmd/bima
+        GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags "-s -w" -ldflags "-w" -ldflags "-linkmode 'external' -extldflags '-static'" \
+          -ldflags "-X main.version=${VERSION}" -o ./dist/bima_aarch64 ./cmd/bima
+
+    - name: Upload bima_x86_64 to S3
+      if: matrix.archconfig == 'x86_64'
+      uses: cloudkernels/minio-upload@v3
+      with:
+        url: https://s3.nubificus.co.uk
+        access-key: ${{ secrets.AWS_ACCESS_KEY }}
+        secret-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        local-path: dist/bima_x86_64
+        remote-path: nbfc-assets/github/bima/dist/${{ env.ARTIFACT_SHA }}/${{ matrix.archconfig }}/
+        policy: 1
+
+    - name: Upload bima_aarch64 to S3
+      if: matrix.archconfig == 'aarch64'
+      uses: cloudkernels/minio-upload@v3
+      with:
+        url: https://s3.nubificus.co.uk
+        access-key: ${{ secrets.AWS_ACCESS_KEY }}
+        secret-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        local-path: dist/bima_aarch64
+        remote-path: nbfc-assets/github/bima/dist/${{ env.ARTIFACT_SHA }}/${{ matrix.archconfig }}/
+        policy: 1
+
+  invoke_test:
+    needs: build
+    runs-on: [self-hosted]
+
+    steps:
+
+    - name: Find SHA
+      run: |
+        if [[ "${{github.event.pull_request.head.sha}}" != "" ]]
+        then
+          echo "ARTIFACT_NAME=$(echo ${{ github.event.pull_request.head_sha }})" >> $GITHUB_ENV
+          #echo "ARTIFACT_NAME=$(echo ${GITHUB_SHA})" >> $GITHUB_ENV
+        else
+          echo "ARTIFACT_NAME=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
+        fi
+
+    #- name: Repository Dispatch
+    #  uses: peter-evans/repository-dispatch@v1
+    #  with:
+    #    token: ${{ secrets.GITHUB_TOKEN}}
+    #    event-type: my-event
+
+    - name: Invoke workflow
+      uses: benc-uk/workflow-dispatch@v1
+      with:
+        workflow: "Test bima"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        ref: ${{ github.event.pull_request.head.ref }}
+        inputs: "{ \"artifact\": \"${{ env.ARTIFACT_NAME }}\" }"

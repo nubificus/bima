@@ -1,0 +1,76 @@
+name: Test bima
+# Ensure job is run after build action is complete
+
+on:
+    #push:
+    #    branches:
+    #      - main
+  
+    #pull_request:
+    #    branches:
+    #      - main
+    workflow_dispatch:
+        inputs:
+          artifact:
+            description: "Input artifact name"
+            required: true
+            default: "main"
+
+
+jobs:
+  test:
+    runs-on: [self-hosted, "${{ matrix.archconfig }}"]
+    container:
+      image: harbor.nbfc.io/nubificus/bima-test:latest
+      options: --privileged
+    strategy:
+        matrix:
+          archconfig: [ x86_64, aarch64 ]
+        fail-fast: false
+
+    steps:
+    - name: Find SHA
+      run: |
+        #echo "ARTIFACT_SHA=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
+        #echo "ARTIFACT_SHA=$(echo ${GITHUB_SHA})" >> $GITHUB_ENV
+        echo "ARTIFACT_SHA=$(echo ${{ inputs.artifact }})" >> $GITHUB_ENV
+
+    - name: Download bima
+      run: |
+        curl -L -o /tmp/bima https://s3.nubificus.co.uk/nbfc-assets/github/bima/dist/${{ env.ARTIFACT_SHA }}/${{ matrix.archconfig }}/bima_${{ matrix.archconfig }}
+    
+    - name: Make bima executable
+      run: |
+        ls -la /tmp/bima
+        ls -la /tmp/
+        chmod +x /tmp/bima 
+        mv /tmp/bima /usr/local/bin/bima
+
+    - name: Start containerd service
+      run: systemctl enable containerd.service --now
+
+    - name: Prepare image
+      run: |
+        cd /tmp && mkdir -p job && cd job
+        curl -L -o redis.hvt https://s3.nubificus.co.uk/bima/${{ matrix.archconfig }}/redis.hvt
+        curl -L -o redis.conf https://s3.nubificus.co.uk/bima/redis.conf
+
+        tee Containerfile > /dev/null <<EOT
+        FROM scratch
+        COPY redis.hvt /unikernels/redis.hvt
+        COPY redis.conf /conf/redis.conf
+
+        LABEL com.urunc.unikernel.binary=/unikernels/redis.hvt
+        LABEL "com.urunc.unikernel.cmdline"='redis-server /data/conf/redis.conf'
+        LABEL "com.urunc.unikernel.unikernelType"="rumprun"
+        LABEL "com.urunc.unikernel.hypervisor"="hvt"
+        EOT
+
+    - name: Build image
+      continue-on-error: true
+      run: bima build -t nubificus/redis-hvt:latest -f /tmp/job/Containerfile /tmp/job
+
+    - name: Verify image creation
+      run: |
+        ctr image ls
+
