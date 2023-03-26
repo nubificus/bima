@@ -3,17 +3,80 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/crane"
+	"github.com/google/go-containerregistry/pkg/v1/partial"
+
 	cp "github.com/otiai10/copy"
 
+	unik "github.com/nubificus/bima/pkg/unikernel"
 	"github.com/urfave/cli/v2"
 )
 
 func main() {
+
+	imageTag := "docker.io/library/alpine:3.17.3"
+	manifest, err := crane.Manifest(imageTag)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(manifest))
+
+	imageConfig, err := crane.Config(imageTag)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(imageConfig))
+	// partial.ConfigLayer(imageConfig)
+
+	testHello, err := crane.Pull(imageTag)
+	if err != nil {
+		panic(err)
+	}
+	configFile, err := partial.ConfigFile(testHello)
+	// fmt.Println(&configFile)
+	// fmt.Println(configFile)
+	fmt.Println("Architecture: ", configFile.Architecture)
+	fmt.Println("OS: ", configFile.OS)
+	// fmt.Println("RootFS: ", configFile.RootFS)
+	fmt.Println("RootFS type: ", configFile.RootFS.Type)
+	fmt.Println("RootFS diff ids: ", configFile.RootFS.DiffIDs)
+	fmt.Println("Config: ", configFile.Config)
+
+	os.Exit(0)
+	m := "/home/gntouts/develop/bima/Makefile"
+	n := "/home/gntouts/develop/bima/"
+	// unik.NewUnikernelImage(m, m, m, m, m)
+	image := unik.NewUnikernelImage()
+	err = image.AddUnikernelFile(m)
+	if err != nil {
+		panic(err)
+	}
+	err = image.AddExtraFiles(n)
+	if err != nil {
+		panic(err)
+	}
+	annot := map[string]string{
+		"test":  "ok",
+		"hello": "world",
+	}
+	image.AddAnnotations(annot)
+	// err = image.SaveOCI("/home/gntouts/develop/bima/image")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	image.Trouble()
+
+	err = image.Save("/home/gntouts/develop/bima/image.tar", "gntouts/bima:0.1")
+	if err != nil {
+		panic(err)
+	}
+	os.Exit(0)
 	app := cli.NewApp()
 	app.Name = "bima"
 	app.Version = "0.0.1"
@@ -35,6 +98,12 @@ func main() {
 			Name:     "type",
 			Aliases:  []string{"t"},
 			Usage:    "The unikernel type.",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "architecture",
+			Aliases:  []string{"a"},
+			Usage:    "The image's architecture.",
 			Required: true,
 		},
 		&cli.StringFlag{
