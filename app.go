@@ -11,47 +11,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var Flags = []cli.Flag{
-	&cli.StringFlag{
-		Name:     "unikernel",
-		Aliases:  []string{"u"},
-		Usage:    "The unikernel binary you want to package.",
-		Required: true,
-	},
-	&cli.StringFlag{
-		Name:     "image",
-		Aliases:  []string{"i"},
-		Usage:    "The name of the image you want to create.",
-		Required: true,
-	},
-	&cli.StringFlag{
-		Name:     "type",
-		Aliases:  []string{"t"},
-		Usage:    "The unikernel type.",
-		Required: true,
-	},
-	&cli.StringFlag{
-		Name:     "architecture",
-		Aliases:  []string{"a", "arch"},
-		Usage:    "The image's architecture.",
-		Required: false,
-		Value:    "",
-	},
-	&cli.StringFlag{
-		Name:     "extra",
-		Aliases:  []string{"e"},
-		Usage:    "Path of the extra file or directory you want to include in the container image.",
-		Required: false,
-	},
-	&cli.StringFlag{
-		Name:     "cmdline",
-		Aliases:  []string{"c"},
-		Usage:    "The cmdline you want to include in the container image annotations.",
-		Required: false,
-		Value:    "",
-	},
-}
-
 func action(ctx *cli.Context) (err error) {
 	defer func() {
 		if err != nil {
@@ -123,12 +82,64 @@ func action(ctx *cli.Context) (err error) {
 
 }
 func Bima() *cli.App {
-	app := cli.NewApp()
-	app.Name = "bima"
-	app.Version = "0.0.2"
-
-	// TODO: add better description
-	app.Description = "bima is a simple CLI tool to build OCI images for urunc runtime."
-	app.Action = action
-	return app
+	return &cli.App{
+		Name:    "bima",
+		Version: "0.0.2",
+		Usage:   "Create OCI compatible images for non-container deployments",
+		Action:  action,
+		Before: func(ctx *cli.Context) error {
+			if ctx.Args().Len() == 0 {
+				cli.ShowAppHelp(ctx)
+				return cli.Exit("", 0)
+			}
+			return nil
+		},
+		Commands: []*cli.Command{
+			{
+				Name:    "unikernel",
+				Aliases: []string{"u"},
+				Usage:   "build a unikernel image",
+				Action:  action,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "unikernel",
+						Aliases:  []string{"u"},
+						Usage:    "The `UNIKERNEL` binary you want to package.",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "image",
+						Aliases:  []string{"i"},
+						Usage:    "The `NAME` of the image you want to create.",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "type",
+						Aliases:  []string{"t"},
+						Usage:    "The unikernel `TYPE`.",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "architecture",
+						Aliases:  []string{"a", "arch"},
+						Usage:    "The image's `ARCH`.",
+						Required: false,
+						Value:    "",
+					},
+					&cli.StringFlag{
+						Name:     "extra",
+						Aliases:  []string{"e"},
+						Usage:    "Path of the `EXTRA` file or directory you want to include in the container image.",
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "cmdline",
+						Aliases:  []string{"c"},
+						Usage:    "The `CMDLINE` you want to include in the container image annotations.",
+						Required: false,
+						Value:    "",
+					},
+				},
+			}},
+	}
 }
