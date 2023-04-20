@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/crane"
-	"github.com/google/go-containerregistry/pkg/v1/partial"
 
 	cp "github.com/otiai10/copy"
 
@@ -21,32 +20,33 @@ import (
 func main() {
 
 	imageTag := "docker.io/library/alpine:3.17.3"
+
 	manifest, err := crane.Manifest(imageTag)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(string(manifest))
 
-	imageConfig, err := crane.Config(imageTag)
+	_, err = crane.Config(imageTag)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(string(imageConfig))
+	// fmt.Println(string(imageConfig))
 	// partial.ConfigLayer(imageConfig)
 
-	testHello, err := crane.Pull(imageTag)
-	if err != nil {
-		panic(err)
-	}
-	configFile, err := partial.ConfigFile(testHello)
+	// testHello, err := crane.Pull(imageTag)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// configFile, err := partial.ConfigFile(testHello)
 	// fmt.Println(&configFile)
 	// fmt.Println(configFile)
-	fmt.Println("Architecture: ", configFile.Architecture)
-	fmt.Println("OS: ", configFile.OS)
-	// fmt.Println("RootFS: ", configFile.RootFS)
-	fmt.Println("RootFS type: ", configFile.RootFS.Type)
-	fmt.Println("RootFS diff ids: ", configFile.RootFS.DiffIDs)
-	fmt.Println("Config: ", configFile.Config)
+	// fmt.Println("Architecture: ", configFile.Architecture)
+	// fmt.Println("OS: ", configFile.OS)
+	// // fmt.Println("RootFS: ", configFile.RootFS)
+	// fmt.Println("RootFS type: ", configFile.RootFS.Type)
+	// fmt.Println("RootFS diff ids: ", configFile.RootFS.DiffIDs)
+	// fmt.Println("Config: ", configFile.Config)
 
 	os.Exit(0)
 	m := "/home/gntouts/develop/bima/Makefile"
@@ -79,7 +79,7 @@ func main() {
 	os.Exit(0)
 	app := cli.NewApp()
 	app.Name = "bima"
-	app.Version = "0.0.1"
+	app.Version = "0.0.2"
 	app.Description = "bima is a simple CLI tool to build OCI images for urunc runtime."
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{

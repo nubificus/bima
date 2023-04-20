@@ -4,8 +4,13 @@ import (
 	"debug/elf"
 	"encoding/base64"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/containerd/containerd/reference"
 )
 
 // Returns the base64 encoding of data as string.
@@ -36,6 +41,37 @@ func FileExists(path string) error {
 	return nil
 }
 
+// Returns the absolute filepath and ensures it points to an existing file
+func ValidAbsoluteFilePath(path string) (string, error) {
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Stat(absolutePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("%s does not exist", absolutePath)
+		}
+		return "", err
+	}
+	if info.IsDir() {
+		return "", fmt.Errorf("%s is a directory, not a file", absolutePath)
+	}
+	return absolutePath, nil
+}
+
+// Returns the absolute filepath and ensures it points to an existing file or directory
+func ValidAbsolutePath(path string) (string, error) {
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(absolutePath); os.IsNotExist(err) {
+		return "", fmt.Errorf("%s does not exist", absolutePath)
+	}
+	return absolutePath, nil
+}
+
 // Checks if the directory in the given path exists. If directory exists and is not file returns nil, else returns err.
 func DirExists(path string) error {
 	filePath, err := filepath.Abs(path)
@@ -58,7 +94,12 @@ func DirExists(path string) error {
 	return nil
 }
 
-func UnikernelArch(name string) (string, error) {
+func ValidImageName(name string) bool {
+	_, err := reference.Parse(name)
+	return err == nil
+}
+
+func GetBinaryArchitecture(name string) (string, error) {
 	file, err := elf.Open(name)
 	if err != nil {
 		return "", err
@@ -72,4 +113,34 @@ func UnikernelArch(name string) (string, error) {
 	default:
 		return "", fmt.Errorf("unknown architecture")
 	}
+}
+
+func CreateRandomDirectory() (string, error) {
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	rand.Seed(time.Now().UnixNano())
+	b := make([]rune, 10)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	directory := "/tmp/bima-" + string(b)
+	err := os.Mkdir(directory, os.ModePerm)
+	if err != nil {
+		return "", nil
+	}
+	return strings.TrimSuffix(directory, "/"), nil
+}
+
+func SplitImageName(imageName string) (string, string) {
+	parts := strings.Split(imageName, "/")
+	nameWithTag := parts[len(parts)-1]
+	nameParts := strings.Split(nameWithTag, ":")
+	tag := ""
+	if len(nameParts) > 1 {
+		tag = nameParts[len(nameParts)-1]
+	} else {
+		tag = "latest"
+	}
+
+	name := nameParts[0]
+	return tag, name
 }
