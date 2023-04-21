@@ -23,7 +23,7 @@ func action(ctx *cli.Context) (err error) {
 	unikernelBinary := ctx.String("unikernel")
 	imageName := ctx.String("image")
 	unikernelType := ctx.String("type")
-	extraFile := ctx.String("extra")
+	extraFile := ctx.StringSlice("extra")
 	cmdLine := ctx.String("cmdline")
 	cpuArch := ctx.String("architecture")
 
@@ -40,10 +40,12 @@ func action(ctx *cli.Context) (err error) {
 	}
 
 	// get absolute path for extra file, if given
-	if extraFile != "" {
-		extraFile, err = utils.ValidAbsolutePath(extraFile)
-		if err != nil {
-			return err
+	if extraFile != nil {
+		for ind, val := range extraFile {
+			extraFile[ind], err = utils.ValidAbsolutePath(val)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -126,11 +128,12 @@ func Bima() *cli.App {
 						Required: false,
 						Value:    "",
 					},
-					&cli.StringFlag{
-						Name:     "extra",
-						Aliases:  []string{"e"},
-						Usage:    "Path of the `EXTRA` file or directory you want to include in the container image.",
-						Required: false,
+					&cli.StringSliceFlag{
+						Name:      "extra",
+						Aliases:   []string{"e"},
+						Usage:     "Path of the `EXTRA` file or directory you want to include in the container image.",
+						Required:  false,
+						TakesFile: true,
 					},
 					&cli.StringFlag{
 						Name:     "cmdline",

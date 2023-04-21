@@ -38,12 +38,12 @@ func (s ImageType) String() string {
 
 // The configuration used by bima to build the image
 type UnikernelImageConfig struct {
-	Name      string // the container image name
-	Type      string // the type of the unikernel (eg hvt, qemu)
-	Unikernel string // the unikernel binary
-	Extra     string // any extra file or directory required by the unikernel
-	Arch      string // the CPU architecture of the unikernel binary
-	CmdLine   string // the cmdline for the unikernel
+	Name      string   // the container image name
+	Type      string   // the type of the unikernel (eg hvt, qemu)
+	Unikernel string   // the unikernel binary
+	Extra     []string // any extra file or directory required by the unikernel
+	Arch      string   // the CPU architecture of the unikernel binary
+	CmdLine   string   // the cmdline for the unikernel
 }
 
 // The unikernel configuration required by urunc
@@ -128,14 +128,21 @@ func CreateImage(config UnikernelImageConfig) (v1.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	// create layer for extra file(s)
-	extraLayer, err := layerFromPath(config.Extra, "/extra/")
-	if err != nil {
-		return nil, err
+
+	// create layers for extra file(s)
+	var extraLayers []v1.Layer
+	for _, val := range config.Extra {
+		temp, err := layerFromPath(val, "/extra/")
+		if err != nil {
+			return nil, err
+		}
+		extraLayers = append(extraLayers, temp)
 	}
-	newImage, err = mutate.AppendLayers(newImage, extraLayer)
-	if err != nil {
-		return nil, err
+	for _, layer := range extraLayers {
+		newImage, err = mutate.AppendLayers(newImage, layer)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// save urunc specific annotations
@@ -146,17 +153,6 @@ func CreateImage(config UnikernelImageConfig) (v1.Image, error) {
 	newImage = mutate.Annotations(newImage, encodedAnnotations).(v1.Image)
 
 	return newImage, nil
-}
-
-// save the image as tarbal
-func Save(image v1.Image, path string, tag string) error {
-	imageManifest, err := image.Manifest()
-	if err != nil {
-		return err
-	}
-	fmt.Println("imageManifest: ", imageManifest)
-	fmt.Println("imageManifestSubject: ", imageManifest.Subject)
-	return crane.Save(image, tag, path)
 }
 
 func (u *UnikernelImage) AddAnnotations(annotations map[string]string) {
