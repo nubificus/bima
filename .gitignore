@@ -16,3 +16,6 @@ vendor/
 
 # Binaries
 bin/
+
+# Directory used during development & testing
+temp/
