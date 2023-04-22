@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/containerd/containerd/reference"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
 // Returns the base64 encoding of data as string.
@@ -142,5 +143,9 @@ func SplitImageName(imageName string) (string, string) {
 	}
 
 	name := nameParts[0]
-	return tag, name
+	return name, tag
+}
+
+func ImportImage(image v1.Image, name string) error {
+	return nil
 }

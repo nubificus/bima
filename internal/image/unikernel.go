@@ -1,40 +1,20 @@
-package unikernel
+package image
 
 import (
 	"encoding/json"
-	"io/ioutil"
-	"strings"
-
-	"github.com/nubificus/bima/pkg/utils"
-
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
+	"github.com/nubificus/bima/internal/utils"
 )
-
-type ImageType uint8
-
-const (
-	Unikernel ImageType = iota
-	IOT
-	// we can add more supported formats here
-)
-
-func (s ImageType) String() string {
-	switch s {
-	case Unikernel:
-		return "unikernel"
-	case IOT:
-		return "iot"
-	}
-	return "unknown"
-}
 
 // The configuration used by bima to build the image
 type UnikernelImageConfig struct {
@@ -63,7 +43,7 @@ type UnikernelImage struct {
 	Image v1.Image
 }
 
-func CreateImage(config UnikernelImageConfig) (v1.Image, error) {
+func CreateUnikernelImage(config UnikernelImageConfig) (v1.Image, error) {
 	// create an empty base image
 	newImage := empty.Image
 

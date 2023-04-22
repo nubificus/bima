@@ -5,9 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/containerd/containerd/defaults"
 	"github.com/google/go-containerregistry/pkg/crane"
-	unikernel "github.com/nubificus/bima/pkg/unikernel"
-	"github.com/nubificus/bima/pkg/utils"
+	image "github.com/nubificus/bima/internal/image"
+	"github.com/nubificus/bima/internal/utils"
 	"github.com/urfave/cli/v2"
 )
 
@@ -26,6 +27,9 @@ func action(ctx *cli.Context) (err error) {
 	extraFile := ctx.StringSlice("extra")
 	cmdLine := ctx.String("cmdline")
 	cpuArch := ctx.String("architecture")
+	namespace := ctx.String("namespace")
+	importFlag := ctx.Bool("import")
+	remoteRegistry := ctx.String("remote")
 
 	// check image name
 	if !utils.ValidImageName(imageName) {
@@ -40,12 +44,10 @@ func action(ctx *cli.Context) (err error) {
 	}
 
 	// get absolute path for extra file, if given
-	if extraFile != nil {
-		for ind, val := range extraFile {
-			extraFile[ind], err = utils.ValidAbsolutePath(val)
-			if err != nil {
-				return err
-			}
+	for ind, val := range extraFile {
+		extraFile[ind], err = utils.ValidAbsolutePath(val)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -56,7 +58,7 @@ func action(ctx *cli.Context) (err error) {
 			return err
 		}
 	}
-	imageConfig := unikernel.UnikernelImageConfig{
+	imageConfig := image.UnikernelImageConfig{
 		Name:      imageName,
 		Type:      unikernelType,
 		Unikernel: unikernelBinary,
@@ -65,7 +67,7 @@ func action(ctx *cli.Context) (err error) {
 		CmdLine:   cmdLine,
 	}
 
-	image, err := unikernel.CreateImage(imageConfig)
+	image, err := image.CreateUnikernelImage(imageConfig)
 	if err != nil {
 		return err
 	}
@@ -74,12 +76,31 @@ func action(ctx *cli.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	target := filepath.Join(cwd, name) + ".tar"
-	err = crane.Save(image, tag, target)
+	target := filepath.Join(cwd, name+":"+tag) + ".tar"
+	err = crane.Save(image, name, target)
 	if err != nil {
 		return err
 	}
-	// TODO: Import image to ctr (?)
+
+	if importFlag {
+		err = utils.CtrImportImage(target, name, ctx.String("address"), namespace, ctx.String("snapshotter"))
+		if err != nil {
+			return err
+		}
+	}
+
+	if remoteRegistry != "" {
+		err = utils.PushImage(image, remoteRegistry, imageName)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Image %s pushed to remote registry\n", imageName)
+	}
+	if !importFlag && remoteRegistry == "" {
+		fmt.Printf("Image tarball saved at %s\n", target)
+	} else {
+		os.RemoveAll(target)
+	}
 	return nil
 
 }
@@ -89,6 +110,29 @@ func Bima() *cli.App {
 		Version: "0.0.2",
 		Usage:   "Create OCI compatible images for non-container deployments",
 		Action:  action,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "namespace",
+				Aliases: []string{"n"},
+				Usage:   "`NAMESPACE` to use when importing image to containerd",
+				Value:   "default",
+				EnvVars: []string{"CONTAINERD_NAMESPACE"},
+			},
+			&cli.StringFlag{
+				Name:    "address",
+				Aliases: []string{"a"},
+				Usage:   "`ADDRESS` for containerd's GRPC server to use when importing image to containerd",
+				Value:   defaults.DefaultAddress,
+				EnvVars: []string{"CONTAINERD_ADDRESS"},
+			},
+			&cli.StringFlag{
+				Name:     "snapshotter",
+				Usage:    "[Optional] `SNAPSHOTTER` name. Empty value stands for the default value. Used when importing the produced image to containerd",
+				Required: false,
+				EnvVars:  []string{"CONTAINERD_SNAPSHOTTER"},
+				Value:    "",
+			},
+		},
 		Before: func(ctx *cli.Context) error {
 			if ctx.Args().Len() == 0 {
 				cli.ShowAppHelp(ctx)
@@ -141,6 +185,16 @@ func Bima() *cli.App {
 						Usage:    "The `CMDLINE` you want to include in the container image annotations.",
 						Required: false,
 						Value:    "",
+					},
+					&cli.BoolFlag{
+						Name:     "import",
+						Usage:    "[Optional] Use to import the produced image to containerd",
+						Required: false,
+					},
+					&cli.StringFlag{
+						Name:     "remote",
+						Usage:    "[Optional] The remote registry details to push the img (eg `USERNAME:PASSWORD@REGISTRY`)",
+						Required: false,
 					},
 				},
 			}},
