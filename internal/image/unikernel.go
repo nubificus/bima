@@ -70,7 +70,7 @@ func CreateUnikernelImage(config UnikernelImageConfig) (v1.Image, error) {
 	unikernelConfig := &UnikernelConfig{
 		VmmType:         config.Type,
 		UnikernelCmd:    config.CmdLine,
-		UnikernelBinary: filepath.Base(config.Unikernel),
+		UnikernelBinary: filepath.Join("/unikernel/", filepath.Base(config.Unikernel)),
 	}
 	unikernelConfig.encode()
 	file, err := json.MarshalIndent(unikernelConfig, " ", "")
@@ -129,7 +129,7 @@ func CreateUnikernelImage(config UnikernelImageConfig) (v1.Image, error) {
 	encodedAnnotations := make(map[string]string)
 	encodedAnnotations["com.urunc.unikernel.cmdline"] = unikernelConfig.UnikernelCmd
 	encodedAnnotations["com.urunc.unikernel.type"] = unikernelConfig.VmmType
-	encodedAnnotations["com.urunc.unikernel.binary"] = unikernelConfig.UnikernelBinary
+	encodedAnnotations["com.urunc.unikernel.binary"] = filepath.Join("/unikernel/", filepath.Base(config.Unikernel))
 	newImage = mutate.Annotations(newImage, encodedAnnotations).(v1.Image)
 
 	return newImage, nil
