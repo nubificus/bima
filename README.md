@@ -6,5 +6,3 @@ For example, developers can package their unikernel binary as a container image 
 
 Inspired by this idea, we are thrilled to introduce `bima` ("βήμα" in Greek means step), the first step in exploring this novel approach to software delivery for non-container deployments. Currently, `bima` creates unikernel "container" images that can be utilized with our custom unikernel runtime `urunc`. Our team is tirelessly working to introduce support for IoT devices in the near future.
 
-
-## dev guide (internal)
