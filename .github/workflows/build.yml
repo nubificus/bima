@@ -1,0 +1,28 @@
+name: Build binaries
+
+on:
+  push:
+      branches:
+        - main
+  workflow_dispatch:
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Go 1.18.x
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.18.x'
+      - name: Display Go version
+        run: go version
+      - name: Install dependencies
+        run: go get .
+      - name: Create binaries directory
+        run: mkdir -p ./dist
+      - name: Build amd64
+        run: GOOS=linux GOARCH=amd64 go build -v -o ./dist/bima_amd64
+      - name: Build arm64
+        run: GOOS=linux GOARCH=arm64 go build -v -o  ./dist/bima_arm64
+        
