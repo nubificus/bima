@@ -5,7 +5,6 @@ type ImageType uint8
 const (
 	Unikernel ImageType = iota
 	IOT
-	// we can add more supported formats here
 )
 
 func (s ImageType) String() string {
