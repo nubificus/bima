@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    runs-on: [ self-hosted, "${{ matrix.archconfig }}", lite]
+    runs-on: [ self-hosted, "${{ matrix.archconfig }}", go]
     strategy:
       matrix:
         archconfig: [ x86_64, aarch64 ]
@@ -28,23 +28,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
     
-    - name : Clean previous Go installation
-      run: |
-        sudo rm -rf /golang
-
-    - name: Install Go
-      run: |
-        sudo mkdir -p /golang
-        if [[ "${{matrix.archconfig}}" != "aarch64" ]]
-        then
-          curl -s -L -o go_archive.tar.gz https://go.dev/dl/go1.20.3.linux-amd64.tar.gz
-        else
-          curl -s -L -o go_archive.tar.gz https://go.dev/dl/go1.20.3.linux-arm64.tar.gz
-        fi
-        ls -la ./
-        sudo tar -C /golang -xzf go_archive.tar.gz
-        echo "/golang/go/bin" >> $GITHUB_PATH
-
     - name: Display Go version
       run: |
         go version
@@ -65,6 +48,7 @@ jobs:
         GOOS=linux GOARCH=arm64 go build -o ./dist/bima_aarch64
 
     - name: Upload bima_x86_64 to S3
+      if: matrix.archconfig == 'x86_64'
       uses: cloudkernels/minio-upload@v3
       with:
         url: https://s3.nubificus.co.uk
@@ -75,6 +59,7 @@ jobs:
         policy: 1
 
     - name: Upload bima_aarch64 to S3
+      if: matrix.archconfig == 'aarch64'
       uses: cloudkernels/minio-upload@v3
       with:
         url: https://s3.nubificus.co.uk
