@@ -1,4 +1,4 @@
-package utils
+package ctr
 
 import (
 	"fmt"
@@ -51,7 +51,7 @@ func ctrAppContext(namespace string) (gocontext.Context, gocontext.CancelFunc) {
 }
 
 // Stripped down version of containerd/containerd/cmd/ctr/commands/images/import.go#103
-func CtrImportImage(imageTarball string, name string, address string, namespace string, snapshotter string) error {
+func ImportImage(imageTarball string, address string, namespace string, snapshotter string) (string, error) {
 	var (
 		in              = imageTarball
 		opts            []containerd.ImportOpt
@@ -59,7 +59,7 @@ func CtrImportImage(imageTarball string, name string, address string, namespace 
 	)
 	client, ctx, cancel, err := ctrClient(address, namespace)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer cancel()
 
@@ -72,9 +72,11 @@ func CtrImportImage(imageTarball string, name string, address string, namespace 
 	opts = append(opts, containerd.WithAllPlatforms(false))
 	ctx, done, err := client.WithLease(ctx)
 	if err != nil {
-		return err
+		return "", err
 	}
-	defer done(ctx)
+	defer func() {
+		_ = done(ctx)
+	}()
 
 	var r io.ReadCloser
 	if in == "-" {
@@ -82,20 +84,21 @@ func CtrImportImage(imageTarball string, name string, address string, namespace 
 	} else {
 		r, err = os.Open(in)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 
 	imgs, err := client.Import(ctx, r, opts...)
 	closeErr := r.Close()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if closeErr != nil {
-		return closeErr
+		return "", closeErr
 	}
 
 	log.G(ctx).Debugf("unpacking %d images", len(imgs))
+	res := ""
 	for _, img := range imgs {
 		// TODO: Make sure this is correctly imported for cross-platform
 		if platformMatcher == nil { // if platform not specified use default.
@@ -103,12 +106,11 @@ func CtrImportImage(imageTarball string, name string, address string, namespace 
 		}
 		image := containerd.NewImageWithPlatform(client, img, platformMatcher)
 
-		fmt.Printf("unpacking %s (%s)...", img.Name, img.Target.Digest)
+		res += fmt.Sprintf("unpacked %s (%s)...", img.Name, img.Target.Digest)
 		err = image.Unpack(ctx, snapshotter)
 		if err != nil {
-			return err
+			return "", err
 		}
-		fmt.Println("done")
 	}
-	return nil
+	return res, nil
 }

@@ -15,7 +15,9 @@
 vendor/
 
 # Binaries
-bin/
+dist/
 
 # Directory used during development & testing
 temp/
+Tempfile
+testimage*
