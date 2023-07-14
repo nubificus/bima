@@ -2,7 +2,6 @@ package image
 
 import (
 	"fmt"
-	"strings"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -12,28 +11,24 @@ import (
 // ArchOperation holds the information of the target architecture
 type ArchOperation struct {
 	Arch string
-	line string
 }
 
 // newCopyOperation creates a new label operation
-// based on the provided instruction line.
-func newArchOperation(instructionLine InstructionLine) (ArchOperation, error) {
+// based on the provided architecture
+func newArchOperation(architecture string) (ArchOperation, error) {
 	// TODO: Add verification based on valid architectures
-	arg := strings.ReplaceAll(string(instructionLine), "ARCH", "")
-	arg = strings.TrimSpace(arg)
 	return ArchOperation{
-		Arch: arg,
-		line: string(instructionLine),
+		Arch: architecture,
 	}, nil
 
 }
 
 func (o ArchOperation) Line() string {
-	return o.line
+	return o.Arch
 }
 
 func (o ArchOperation) Info() string {
-	return fmt.Sprintf("Performing instruction: %q\nSetting target ARCH to %q", o.line, o.Arch)
+	return fmt.Sprintf("Setting image architecture to: %q", o.Arch)
 }
 
 func (o ArchOperation) Type() string {

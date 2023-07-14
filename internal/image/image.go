@@ -3,7 +3,10 @@ package image
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
+
+	"debug/elf"
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -28,9 +31,10 @@ func baseImage() (*v1.Image, error) {
 }
 
 type BimaImage struct {
-	Image   *v1.Image
-	labels  []LabelOperation
-	archSet bool
+	Image  *v1.Image
+	labels []LabelOperation
+	copies []CopyOperation
+	arch   string
 }
 
 func NewBimaImage() (*BimaImage, error) {
@@ -53,10 +57,8 @@ func (i *BimaImage) ApplyOperation(operation BimaOperation) error {
 	// persist all labels
 	if operation.Type() == "LABEL" {
 		i.labels = append(i.labels, operation.(LabelOperation))
-	}
-	// set architecture flag
-	if operation.Type() == "ARCH" {
-		i.archSet = true
+	} else if operation.Type() == "COPY" {
+		i.copies = append(i.copies, operation.(CopyOperation))
 	}
 	return nil
 }
@@ -219,9 +221,71 @@ func (i *BimaImage) addIoTJSON() error {
 	return nil
 }
 
-func (i *BimaImage) EnsureArchSet() error {
-	if i.archSet {
-		return nil
+func (i *BimaImage) extractIUnikernelArch() error {
+	// first we need to find the value of annotation "com.urunc.unikernel.binary"
+	targetKey := cmdAnnotation()
+	targetVal := ""
+	for _, val := range i.labels {
+		if val.Key == targetKey {
+			targetVal = val.Value
+			break
+		}
 	}
-	return fmt.Errorf("invalid Containerfile - target ARCH not set")
+	if targetVal == "" {
+		return fmt.Errorf("unikernel annotation was not set")
+	}
+	targetVal, err := utils.Base64Decode(targetVal)
+	if err != nil {
+		return fmt.Errorf("failed to decode unikernel annotation value")
+
+	}
+	// next, we need to find the file name of the unikernel
+	unikernelName := filepath.Base(targetVal)
+	unikernelPath := ""
+
+	// search COPY operations to find the local unikernel file
+	for _, val := range i.copies {
+		tmp := filepath.Base(val.Destination)
+		if tmp == unikernelName {
+			unikernelPath = val.Source
+			break
+		}
+	}
+	if unikernelPath == "" {
+		return fmt.Errorf("unikernel defined by annotation was not copied in image rootfs")
+	}
+
+	file, err := elf.Open(unikernelPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	switch file.Machine {
+	case elf.EM_AARCH64:
+		i.arch = "arm64"
+		return nil
+	case elf.EM_X86_64:
+		i.arch = "amd64"
+		return nil
+	default:
+		return fmt.Errorf("unknown architecture")
+	}
+}
+
+func (i *BimaImage) SetArchitecture() error {
+	err := i.extractIUnikernelArch()
+	if err != nil {
+		return err
+	}
+	newOp, err := newArchOperation(i.arch)
+	if err != nil {
+		return err
+	}
+	img := *i.Image
+	newImg, err := newOp.UpdateImage(img)
+	if err != nil {
+		return err
+	}
+	i.Image = &newImg
+	return nil
 }

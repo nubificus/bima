@@ -9,7 +9,7 @@ import (
 
 // supportedOperations returns a list of all supported operations
 func supportedOperations() [5]string {
-	return [5]string{"FROM", "COPY", "LABEL", "NOOP", "ARCH"}
+	return [5]string{"FROM", "COPY", "LABEL", "NOOP"}
 }
 
 // InstructionLine represents a single line from the Containerfile
@@ -54,8 +54,6 @@ func (i InstructionLine) ToBimaOperation() (BimaOperation, error) {
 		return newCopyOperation(i)
 	case "LABEL":
 		return newLabelOperation(i)
-	case "ARCH":
-		return newArchOperation(i)
 	default:
 		return nil, fmt.Errorf("ERR: Unsupported operation %q", op)
 	}

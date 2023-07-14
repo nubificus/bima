@@ -21,6 +21,7 @@ uninstall:
 
 clean:
 	@rm -fr ./dist/
+	@rm -f ./Tempfile
 
 build_aarch64: prepare
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags "-s -w" -ldflags "-w" -ldflags "-linkmode 'external' -extldflags '-static'" \

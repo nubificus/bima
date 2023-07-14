@@ -12,11 +12,10 @@ Inspired by this idea, we are thrilled to introduce `bima` ("βήμα" in Greek 
 ## How bima works
 
 bima builds an OCI-compatible Container Image from a special type of containerfile. This special containerfile supports
-a minimal set of "instructions", namely FROM, ARCH, COPY and LABEL. The images built by bima are intended to be run by urunc,
+a minimal set of "instructions", namely FROM, COPY and LABEL. The images built by bima are intended to be run by urunc,
 so there is no compatibility with other container runtimes.
 
 - `FROM`: this is not taken into account at the current implementation, but we plan to add support for.
-- `ARCH`: this is a required "instruction" used to determine the architecture of the Unikernel packaged in the produced image.
 - `COPY`: this works as in Dockerfiles. At this moment, only a single copy operation per "instruction" (think one copy per line).
 - `LABEL`: All LABEL "instructions" are added as annotations to the Container image. They are also added to a special `urunc.json` inside the container's rootfs.
 
@@ -29,24 +28,26 @@ The required annotations are the following:
 - `com.urunc.unikernel.binary`: The unikernel binary to run
 - `com.urunc.unikernel.cmdline`: The cmdline used to run the unikernel
 
+The produced image's platform OS is always Linux, while the platform architecture is automatically extracted from the ELF headers of the file defined in `com.urunc.unikernel.binary` annotation.
+
 A sample Containerfile should look like this:
 
 ```Dockerfile
 # the FROM instruction will not be parsed
 FROM scratch
-ARCH amd64
 
 COPY test-redis.hvt /unikernel/test-redis.hvt
 COPY redis.conf /conf/redis.conf
 
-
-LABEL "com.urunc.unikernel.cmdline"="{"cmdline":"redis-server /data/conf/redis.conf","net":{"if":"ukvmif0","cloner":"True","type":"inet","method":"static","addr":"10.0.66.2","mask":"24","gw":"10.0.66.1"},"blk":{"source":"etfs","path":"/dev/ld0a","fstype":"blk","mountpoint":"/data"}}"
+LABEL com.urunc.unikernel.binary=/unikernel/test-redis.hvt
+LABEL "com.urunc.unikernel.cmdline"='{"cmdline":"redis-server /data/conf/redis.conf",\
+"net":{"if":"ukvmif0","cloner":"True","type":"inet","method":"static","addr":"10.0.66.2","mask":"24","gw":"10.0.66.1"},\
+"blk":{"source":"etfs","path":"/dev/ld0a","fstype":"blk","mountpoint":"/data"}}'
 LABEL "com.urunc.unikernel.unikernelType"="rumprun"
 LABEL "com.urunc.unikernel.hypervisor"="qemu"
-
-# This is ok, even without the double quotes. However, single quotes are not supported
-LABEL com.urunc.unikernel.binary=/unikernel/test-redis.hvt
 ```
+
+> Note: For labels, you can use single quotes, double quotes or no quotes at all. Defining multiple label key-value pairs in a single LABEL instruction is not supported.
 
 ## Usage
 

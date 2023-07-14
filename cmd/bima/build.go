@@ -210,7 +210,7 @@ func buildImage(buildContext string, file string) (*image.BimaImage, error) {
 	}
 
 	// check if arch was defined, if not use the host's arch
-	err = img.EnsureArchSet()
+	err = img.SetArchitecture()
 	if err != nil {
 		return nil, err
 	}

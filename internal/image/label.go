@@ -22,12 +22,17 @@ type LabelOperation struct {
 func newLabelOperation(instructionLine InstructionLine) (LabelOperation, error) {
 	arg := strings.ReplaceAll(string(instructionLine), "LABEL", "")
 	arg = strings.TrimSpace(arg)
-	parts := strings.Split(string(arg), "=")
+	parts := strings.SplitN(string(arg), "=", 2)
 	if len(parts) != 2 {
 		return LabelOperation{}, fmt.Errorf("invalid LABEL format: %q", instructionLine)
 	}
+	// trim both single and double quotes
 	key := strings.Trim(parts[0], "\"")
+	key = strings.Trim(key, "\\'")
+
 	val := strings.Trim(parts[1], "\"")
+	val = strings.Trim(val, "\\'")
+
 	return LabelOperation{
 		Key:   key,
 		Value: utils.Base64Encode(val),
