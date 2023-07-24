@@ -21,3 +21,7 @@ dist/
 temp/
 Tempfile
 testimage*
+
+# s3 config
+
+s3.json
