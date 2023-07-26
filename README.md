@@ -16,8 +16,8 @@ a minimal set of "instructions", namely FROM, COPY and LABEL. The images built b
 so there is no compatibility with other container runtimes.
 
 - `FROM`: this is not taken into account at the current implementation, but we plan to add support for.
-- `COPY`: this works as in Dockerfiles. At this moment, only a single copy operation per "instruction" (think one copy per line).
-- `LABEL`: All LABEL "instructions" are added as annotations to the Container image. They are also added to a special `urunc.json` inside the container's rootfs.
+- `COPY`: this works as in Dockerfiles. At this moment, only a single copy operation per "instruction" (think one copy per line). These files are copied inside the image's `rootfs`, which is then passed to the unikernel as a block device and mounted under `/data` directory.
+- `LABEL`: all LABEL "instructions" are added as annotations to the Container image. They are also added to a special `urunc.json` inside the container's rootfs.
 
 Due to the tight coupling between bima and urunc, the few annotations that are required for urunc to work, are also required by bima.
 
@@ -40,9 +40,7 @@ COPY test-redis.hvt /unikernel/test-redis.hvt
 COPY redis.conf /conf/redis.conf
 
 LABEL com.urunc.unikernel.binary=/unikernel/test-redis.hvt
-LABEL "com.urunc.unikernel.cmdline"='{"cmdline":"redis-server /data/conf/redis.conf",\
-"net":{"if":"ukvmif0","cloner":"True","type":"inet","method":"static","addr":"10.0.66.2","mask":"24","gw":"10.0.66.1"},\
-"blk":{"source":"etfs","path":"/dev/ld0a","fstype":"blk","mountpoint":"/data"}}'
+LABEL "com.urunc.unikernel.cmdline"='redis-server /data/conf/redis.conf'
 LABEL "com.urunc.unikernel.unikernelType"="rumprun"
 LABEL "com.urunc.unikernel.hypervisor"="qemu"
 ```

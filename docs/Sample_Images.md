@@ -17,7 +17,7 @@ curl -L -o redis.conf https://s3.nubificus.co.uk/bima/redis.conf
 
 tee Containerfile > /dev/null <<EOT
 FROM scratch
-COPY redis.hvt /unikernels/redis.hvt
+COPY redis.hvt /unikernel/redis.hvt
 COPY redis.conf /conf/redis.conf
 
 LABEL com.urunc.unikernel.binary=/unikernel/redis.hvt
