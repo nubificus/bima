@@ -261,10 +261,16 @@ func (i *BimaImage) extractIUnikernelArch() error {
 	}
 	defer file.Close()
 	switch file.Machine {
+	case elf.EM_ARM:
+		i.arch = "arm64"
+		return nil
 	case elf.EM_AARCH64:
 		i.arch = "arm64"
 		return nil
 	case elf.EM_X86_64:
+		i.arch = "amd64"
+		return nil
+	case elf.EM_386:
 		i.arch = "amd64"
 		return nil
 	default:
