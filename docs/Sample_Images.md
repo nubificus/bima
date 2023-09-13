@@ -12,7 +12,7 @@ curl -L -o bima https://s3.nubificus.co.uk/nbfc-assets/github/bima/dist/v0.2.0/$
 ```bash
 BUILD_DIR=$(mktemp -d)
 pushd $BUILD_DIR
-curl -L -o redis.hvt https://s3.nubificus.co.uk/bima/redis.hvt
+curl -L -o redis.hvt https://s3.nubificus.co.uk/bima/$(uname -m)/redis.hvt
 curl -L -o redis.conf https://s3.nubificus.co.uk/bima/redis.conf
 
 tee Containerfile > /dev/null <<EOT
