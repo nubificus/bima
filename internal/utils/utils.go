@@ -1,151 +1,85 @@
 package utils
 
 import (
-	"debug/elf"
+	"bufio"
 	"encoding/base64"
-	"fmt"
-	"math/rand"
 	"os"
-	"path/filepath"
-	"strings"
-	"time"
-
-	"github.com/containerd/containerd/reference"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
-// Returns the base64 encoding of data as string.
+// FileExists checks if a file exists and is indeed a file.
+// Returns true if the file exists and is a file,
+// false if the file does not exist or is a directory,
+// and an error if an error occurs while checking.
+func FileExists(filename string) (bool, error) {
+	info, err := os.Stat(filename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil // File does not exist
+		}
+		return false, err // Error occurred while checking
+	}
+
+	if info != nil && info.IsDir() {
+		return false, nil // Path is a directory
+	}
+
+	return true, nil // File exists and is a file
+}
+
+// DirExists checks if a directory exists and is indeed a directory.
+// Returns true if the directory exists and is a directory,
+// false if the directory does not exist or is a file,
+// and an error if an error occurs while checking.
+func DirExists(dirname string) (bool, error) {
+	info, err := os.Stat(dirname)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil // Directory does not exist
+		}
+		return false, err // Error occurred while checking
+	}
+
+	if info != nil && !info.IsDir() {
+		return false, nil // Path is a file
+	}
+
+	return true, nil // Directory exists and is a directory
+}
+
+// SplitFileToLines reads a file and splits its contents into individual lines, excluding empty lines.
+// It takes the file path as input and returns a slice of strings representing each non-empty line,
+// along with an error if an error occurs while reading the file.
+func SplitFileToLines(file string) ([]string, error) {
+	readFile, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer readFile.Close()
+	var lines []string
+	fileScanner := bufio.NewScanner(readFile)
+
+	for fileScanner.Scan() {
+		if fileScanner.Text() != "" {
+			lines = append(lines, fileScanner.Text())
+		}
+	}
+	return lines, nil
+}
+
+// Base64Encode encodes the given string data to Base64 format.
+// It takes a string as input and returns the Base64-encoded representation of the input data.
 func Base64Encode(data string) string {
 	encoded := base64.StdEncoding.EncodeToString([]byte(data))
 	return encoded
 }
 
-// Checks if the file in the given path exists. If file exists and is not directory returns nil, else returns err.
-func FileExists(path string) error {
-	filePath, err := filepath.Abs(path)
-	if err != nil {
-		return err
-	}
-	file, err := os.Open(filePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return err
-	}
-	if fileInfo.IsDir() {
-		return fmt.Errorf("file %s is a directory", filePath)
-	}
-	return nil
-}
-
-// Returns the absolute filepath and ensures it points to an existing file
-func ValidAbsoluteFilePath(path string) (string, error) {
-	absolutePath, err := filepath.Abs(path)
+// Base64Decode decodes the given Base64-encoded string to the original data.
+// It takes a Base64-encoded string as input and returns the decoded data as a string.
+func Base64Decode(encodedData string) (string, error) {
+	decodedBytes, err := base64.StdEncoding.DecodeString(encodedData)
 	if err != nil {
 		return "", err
 	}
-	info, err := os.Stat(absolutePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", fmt.Errorf("%s does not exist", absolutePath)
-		}
-		return "", err
-	}
-	if info.IsDir() {
-		return "", fmt.Errorf("%s is a directory, not a file", absolutePath)
-	}
-	return absolutePath, nil
-}
 
-// Returns the absolute filepath and ensures it points to an existing file or directory
-func ValidAbsolutePath(path string) (string, error) {
-	absolutePath, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-	if _, err := os.Stat(absolutePath); os.IsNotExist(err) {
-		return "", fmt.Errorf("%s does not exist", absolutePath)
-	}
-	return absolutePath, nil
-}
-
-// Checks if the directory in the given path exists. If directory exists and is not file returns nil, else returns err.
-func DirExists(path string) error {
-	filePath, err := filepath.Abs(path)
-	if err != nil {
-		return err
-	}
-	file, err := os.Open(filePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return err
-	}
-	if !fileInfo.IsDir() {
-		return fmt.Errorf("file %s is a file", filePath)
-	}
-	return nil
-}
-
-func ValidImageName(name string) bool {
-	_, err := reference.Parse(name)
-	return err == nil
-}
-
-func GetBinaryArchitecture(name string) (string, error) {
-	file, err := elf.Open(name)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-	switch file.Machine {
-	case elf.EM_AARCH64:
-		return "arm64", nil
-	case elf.EM_X86_64:
-		return "amd64", nil
-	default:
-		return "", fmt.Errorf("unknown architecture")
-	}
-}
-
-func CreateRandomDirectory() (string, error) {
-	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	rand.Seed(time.Now().UnixNano())
-	b := make([]rune, 10)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	directory := "/tmp/bima-" + string(b)
-	err := os.Mkdir(directory, os.ModePerm)
-	if err != nil {
-		return "", nil
-	}
-	return strings.TrimSuffix(directory, "/"), nil
-}
-
-func SplitImageName(imageName string) (string, string) {
-	parts := strings.Split(imageName, "/")
-	nameWithTag := parts[len(parts)-1]
-	nameParts := strings.Split(nameWithTag, ":")
-	tag := ""
-	if len(nameParts) > 1 {
-		tag = nameParts[len(nameParts)-1]
-	} else {
-		tag = "latest"
-	}
-
-	name := nameParts[0]
-	return name, tag
-}
-
-func ImportImage(image v1.Image, name string) error {
-	return nil
+	return string(decodedBytes), nil
 }

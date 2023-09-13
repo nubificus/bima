@@ -15,7 +15,13 @@
 vendor/
 
 # Binaries
-bin/
+dist/
 
 # Directory used during development & testing
 temp/
+Tempfile
+testimage*
+
+# s3 config
+
+s3.json
