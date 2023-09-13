@@ -2,9 +2,10 @@ name: Code linting
 on:
   push:
     branches:
-      - v0.2.0
       - main
   pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read

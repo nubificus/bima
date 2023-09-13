@@ -2,24 +2,21 @@ name: Test bima
 # Ensure job is run after build action is complete
 
 on:
-    push:
-        branches:
-          - main
-          - v0.2.0
+    #push:
+    #    branches:
+    #      - main
   
-    pull_request:
-        branches:
-          - main
-          - v0.2.0
+    #pull_request:
+    #    branches:
+    #      - main
     workflow_dispatch:
-
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, "${{ matrix.archconfig }}"]
     container:
       image: harbor.nbfc.io/nubificus/bima-test:latest
-      options: --platform=${{ matrix.archconfig }}
+      options: --privileged
     strategy:
         matrix:
           archconfig: [ x86_64, aarch64 ]
@@ -37,7 +34,7 @@ jobs:
 
     - name: Download bima
       run: |
-        curl -L -o /tmp/bima https://s3.nubificus.co.uk/nbfc-assets/github/bima/dist/v0.2.0/${{ matrix.archconfig }}/bima_${{ matrix.archconfig }}
+        curl -L -o /tmp/bima https://s3.nubificus.co.uk/nbfc-assets/github/bima/dist/${{ env.ARTIFACT_SHA }}/${{ matrix.archconfig }}/bima_${{ matrix.archconfig }}
     
     - name: Make bima executable
       run: |
@@ -52,7 +49,7 @@ jobs:
     - name: Prepare image
       run: |
         cd /tmp && mkdir -p job && cd job
-        curl -L -o redis.hvt https://s3.nubificus.co.uk/bima/redis.hvt
+        curl -L -o redis.hvt https://s3.nubificus.co.uk/bima/${{ matrix.archconfig }}/redis.hvt
         curl -L -o redis.conf https://s3.nubificus.co.uk/bima/redis.conf
 
         tee Containerfile > /dev/null <<EOT

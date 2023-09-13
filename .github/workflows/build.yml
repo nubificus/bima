@@ -4,12 +4,9 @@ on:
   push:
       branches:
         - main
-        - v0.2.0
-
   pull_request:
       branches:
         - main
-        - v0.2.0
   workflow_dispatch:
 
 jobs:
@@ -71,3 +68,27 @@ jobs:
         local-path: dist/bima_aarch64
         remote-path: nbfc-assets/github/bima/dist/${{ env.ARTIFACT_SHA }}/${{ matrix.archconfig }}/
         policy: 1
+
+  invoke_test:
+    needs: build
+    runs-on: [self-hosted]
+
+    steps:
+
+    - name: Find SHA
+      run: |
+        # If we are in a PR, use the name of the branch that we want to merge,
+        # otherwise "main" or tag name
+        if [[ "${{github.event.pull_request.head.sha}}" != "" ]]
+        then
+          echo "ARTIFACT_NAME=$(echo ${{github.event.pull_request.head.ref}})" >> $GITHUB_ENV
+        else
+          echo "ARTIFACT_NAME=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
+        fi
+
+    - name: Invoke workflow
+      uses: benc-uk/workflow-dispatch@v1
+      with:
+        workflow: "Test bima"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        ref: ${{ env.ARTIFACT_NAME }} 
