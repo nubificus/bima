@@ -151,3 +151,7 @@ To locally lint your code using Docker, run:
 ```bash
 docker run --rm -v $(pwd):/app -w /app golangci/golangci-lint:v1.53.3 golangci-lint run -v --timeout=5m
 ```
+
+## License
+
+[Apache License 2.0](LICENSE)
