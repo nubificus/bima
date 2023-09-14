@@ -25,12 +25,8 @@ jobs:
     steps:
     - name: Find SHA
       run: |
-        if [[ "${{github.event.pull_request.head.sha}}" != "" ]]
-        then
-          echo "ARTIFACT_SHA=$(echo ${{github.event.pull_request.head.ref}})" >> $GITHUB_ENV
-        else
-          echo "ARTIFACT_SHA=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
-        fi
+        #echo "ARTIFACT_SHA=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
+        echo "ARTIFACT_SHA=$(echo ${GITHUB_SHA})" >> $GITHUB_ENV
 
     - name: Download bima
       run: |
@@ -57,7 +53,7 @@ jobs:
         COPY redis.hvt /unikernels/redis.hvt
         COPY redis.conf /conf/redis.conf
 
-        LABEL com.urunc.unikernel.binary=/unikernel/redis.hvt
+        LABEL com.urunc.unikernel.binary=/unikernels/redis.hvt
         LABEL "com.urunc.unikernel.cmdline"='redis-server /data/conf/redis.conf'
         LABEL "com.urunc.unikernel.unikernelType"="rumprun"
         LABEL "com.urunc.unikernel.hypervisor"="hvt"

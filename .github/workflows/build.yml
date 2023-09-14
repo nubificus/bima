@@ -34,7 +34,8 @@ jobs:
       run: |
         if [[ "${{github.event.pull_request.head.sha}}" != "" ]]
         then
-          echo "ARTIFACT_SHA=$(echo ${{github.event.pull_request.head.ref}})" >> $GITHUB_ENV
+          echo "ARTIFACT_SHA=$(echo ${{ github.event.pull_request.head.sha }})" >> $GITHUB_ENV
+          #echo "ARTIFACT_SHA=$(echo ${GITHUB_SHA})" >> $GITHUB_ENV
         else
           echo "ARTIFACT_SHA=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
         fi
@@ -77,18 +78,23 @@ jobs:
 
     - name: Find SHA
       run: |
-        # If we are in a PR, use the name of the branch that we want to merge,
-        # otherwise "main" or tag name
         if [[ "${{github.event.pull_request.head.sha}}" != "" ]]
         then
-          echo "ARTIFACT_NAME=$(echo ${{github.event.pull_request.head.ref}})" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=$(echo ${{ github.event.pull_request.head_sha }})" >> $GITHUB_ENV
+          #echo "ARTIFACT_NAME=$(echo ${GITHUB_SHA})" >> $GITHUB_ENV
         else
           echo "ARTIFACT_NAME=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
         fi
+
+    #- name: Repository Dispatch
+    #  uses: peter-evans/repository-dispatch@v1
+    #  with:
+    #    token: ${{ secrets.GITHUB_TOKEN}}
+    #    event-type: my-event
 
     - name: Invoke workflow
       uses: benc-uk/workflow-dispatch@v1
       with:
         workflow: "Test bima"
         token: ${{ secrets.GITHUB_TOKEN }}
-        ref: ${{ env.ARTIFACT_NAME }} 
+        ref: ${{ github.event.pull_request.head.ref }}
