@@ -160,6 +160,13 @@ func getOperations(contextDir string, containerFile string) ([]image.BimaOperati
 	log.Tracef("Read following lines from Containerfile: %v", lines)
 	operations := []image.BimaOperation{}
 	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		for strings.Contains(line, "  ") {
+			line = strings.ReplaceAll(line, "  ", " ")
+		}
 		log.Tracef("Creating bima operation from line %q", line)
 		instruction := image.NewInstructionLine(line)
 		operation, err := instruction.ToBimaOperation()
