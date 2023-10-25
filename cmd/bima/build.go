@@ -134,6 +134,9 @@ func bimaBuild(ctx *cli.Context) error {
 			return err
 		}
 		log.Infof(msg)
+		shaDigest := strings.Split(msg, "(")[1]
+		shaDigest = strings.Split(shaDigest, ")")[0]
+		fmt.Println(shaDigest)
 		err = os.RemoveAll(targetPath)
 		if err != nil {
 			return err
