@@ -24,10 +24,10 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images/archive"
-	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/pkg/epoch"
 	"github.com/containerd/containerd/platforms"
+	ctrLog "github.com/containerd/log"
 )
 
 var (
@@ -56,9 +56,9 @@ func ctrAppContext(namespace string) (gocontext.Context, gocontext.CancelFunc) {
 		ctx, cancel = gocontext.WithCancel(ctx)
 	}
 	if tm, err := epoch.SourceDateEpoch(); err != nil {
-		log.L.WithError(err).Warn("Failed to read SOURCE_DATE_EPOCH")
+		ctrLog.L.WithError(err).Warn("Failed to read SOURCE_DATE_EPOCH")
 	} else if tm != nil {
-		log.L.Debugf("Using SOURCE_DATE_EPOCH: %v", tm)
+		ctrLog.L.Debugf("Using SOURCE_DATE_EPOCH: %v", tm)
 		ctx = epoch.WithSourceDateEpoch(ctx, tm)
 	}
 	return ctx, cancel
@@ -111,7 +111,7 @@ func ImportImage(imageTarball string, address string, namespace string, snapshot
 		return "", closeErr
 	}
 
-	log.G(ctx).Debugf("unpacking %d images", len(imgs))
+	ctrLog.G(ctx).Debugf("unpacking %d images", len(imgs))
 	res := ""
 	for _, img := range imgs {
 		// TODO: Make sure this is correctly imported for cross-platform
