@@ -4,9 +4,10 @@ go 1.19
 
 require (
 	github.com/containerd/containerd v1.7.7
+	github.com/containerd/log v0.1.0
 	github.com/google/go-containerregistry v0.14.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/urfave/cli/v2 v2.25.0
+	github.com/urfave/cli/v2 v2.27.0
 )
 
 require (
@@ -17,7 +18,6 @@ require (
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/continuity v0.4.2 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
-	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
 	github.com/containerd/ttrpc v1.2.2 // indirect
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
