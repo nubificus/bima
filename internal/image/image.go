@@ -295,7 +295,14 @@ func (i *BimaImage) extractIUnikernelArch() error {
 func (i *BimaImage) SetArchitecture() error {
 	err := i.extractIUnikernelArch()
 	if err != nil {
-		return err
+		//FIXME: Ultimate hack to allow aarch64 unikraft
+		// we need to study the correct binary format
+		// and derive the arch from the COFF file
+		// https://github.com/unikraft/unikraft/tree/255f72ff7dbb163f3871ef043626114831fb4e42/support/scripts
+		// and 
+		// https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#coff-file-header-object-and-image
+		i.arch = "arm64"
+		//return err
 	}
 	newOp, err := newArchOperation(i.arch)
 	if err != nil {
