@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"debug/elf"
+	"debug/pe"
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -270,26 +271,41 @@ func (i *BimaImage) extractIUnikernelArch() error {
 	}
 
 	file, err := elf.Open(unikernelPath)
-	if err != nil {
-		return err
+	if err == nil {
+		defer file.Close()
+		switch file.Machine {
+		case elf.EM_ARM:
+			i.arch = "arm64"
+			return nil
+		case elf.EM_AARCH64:
+			i.arch = "arm64"
+			return nil
+		case elf.EM_X86_64:
+			i.arch = "amd64"
+			return nil
+		case elf.EM_386:
+			i.arch = "amd64"
+			return nil
+		default:
+			return fmt.Errorf("unknown architecture")
+		}
 	}
-	defer file.Close()
-	switch file.Machine {
-	case elf.EM_ARM:
-		i.arch = "arm64"
-		return nil
-	case elf.EM_AARCH64:
-		i.arch = "arm64"
-		return nil
-	case elf.EM_X86_64:
-		i.arch = "amd64"
-		return nil
-	case elf.EM_386:
-		i.arch = "amd64"
-		return nil
-	default:
-		return fmt.Errorf("unknown architecture")
+	peFile, err := pe.Open(unikernelPath)
+	if err == nil {
+		defer peFile.Close()
+		switch peFile.FileHeader.Machine {
+		case pe.IMAGE_FILE_MACHINE_AMD64:
+			i.arch = "arm64"
+			return nil
+		case pe.IMAGE_FILE_MACHINE_ARM64:
+			i.arch = "arm64"
+			return nil
+		default:
+			return fmt.Errorf("unknown architecture")
+		}
 	}
+
+	return err
 }
 
 func (i *BimaImage) SetArchitecture() error {
