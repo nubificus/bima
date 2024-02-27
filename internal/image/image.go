@@ -17,6 +17,7 @@ package image
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -270,10 +271,10 @@ func (i *BimaImage) extractIUnikernelArch() error {
 		return fmt.Errorf("unikernel defined by annotation was not copied in image rootfs")
 	}
 
-	file, err := elf.Open(unikernelPath)
+	elfFile, err := elf.Open(unikernelPath)
 	if err == nil {
-		defer file.Close()
-		switch file.Machine {
+		defer elfFile.Close()
+		switch elfFile.Machine {
 		case elf.EM_ARM:
 			i.arch = "arm64"
 			return nil
@@ -290,6 +291,8 @@ func (i *BimaImage) extractIUnikernelArch() error {
 			return fmt.Errorf("unknown architecture")
 		}
 	}
+
+	// We are not dealing with an elf binary. Maybe we can try PE
 	peFile, err := pe.Open(unikernelPath)
 	if err == nil {
 		defer peFile.Close()
@@ -302,6 +305,28 @@ func (i *BimaImage) extractIUnikernelArch() error {
 			return nil
 		default:
 			return fmt.Errorf("unknown architecture")
+		}
+	}
+
+	// We are not dealing with an elf or PE binary.
+	// Let's check if it is Linux kernel ARM64 boot executable Image
+	file, err := os.Open(unikernelPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	var dosheader [64]byte
+
+	if _, err = file.ReadAt(dosheader[0:], 0); err != nil {
+		return err
+	}
+	if dosheader[0] == 'M' && dosheader[1] == 'Z' {
+		if dosheader[56] == 'A' && dosheader[57] == 'R' {
+			if dosheader[58] == 'M' && dosheader[59] == 'd' {
+				i.arch = "arm64"
+				return nil
+			}
 		}
 	}
 
