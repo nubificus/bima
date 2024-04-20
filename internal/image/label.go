@@ -70,5 +70,19 @@ func (o LabelOperation) UpdateImage(image v1.Image) (v1.Image, error) {
 	annotations := make(map[string]string)
 	annotations[o.Key] = o.Value
 	newImage := mutate.Annotations(image, annotations).(v1.Image)
-	return newImage, nil
+
+	currentCfgFile, err := newImage.ConfigFile()
+	if err != nil {
+		return image, fmt.Errorf("failed to get ConfigFile: %v", err)
+	}
+	currentEnvs := currentCfgFile.Config.Env
+	newEnv := fmt.Sprintf("%s=%s", o.Key, o.Value)
+	envs := append(currentEnvs, newEnv)
+	newConf := currentCfgFile.Config.DeepCopy()
+	newConf.Env = envs
+	envImage, err := mutate.Config(image, *newConf)
+	if err != nil {
+		return image, fmt.Errorf("failed to mutate Config: %v", err)
+	}
+	return envImage, nil
 }
