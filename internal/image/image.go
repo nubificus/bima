@@ -238,6 +238,9 @@ func (i *BimaImage) addIoTJSON() error {
 }
 
 func (i *BimaImage) extractIUnikernelArch() error {
+	if i.imageType() != "unikernel" {
+		return nil
+	}
 	// first we need to find the value of annotation "com.urunc.unikernel.binary"
 	targetKey := cmdAnnotation()
 	targetVal := ""
