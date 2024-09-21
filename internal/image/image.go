@@ -47,10 +47,12 @@ func baseImage() (*v1.Image, error) {
 }
 
 type BimaImage struct {
-	Image  *v1.Image
-	labels []LabelOperation
-	copies []CopyOperation
-	arch   string
+	Image   *v1.Image
+	labels  []LabelOperation
+	copies  []CopyOperation
+	arch    string
+	filePath string
+	Version string
 }
 
 func NewBimaImage() (*BimaImage, error) {
@@ -214,6 +216,10 @@ func (i *BimaImage) addUnikernelJSON() error {
 	uruncMap := make(map[string]string)
 	currentAnnotationMap := i.getLabelMap()
 	for _, key := range annotations {
+		value, _ := utils.Base64Decode(currentAnnotationMap[key])
+		if value == "unikraft" {
+			currentAnnotationMap[key] = utils.Base64Encode("unikraft-" + i.Version[:6])
+		}
 		uruncMap[key] = currentAnnotationMap[key]
 	}
 	byteObj, err := json.Marshal(uruncMap)
@@ -270,6 +276,7 @@ func (i *BimaImage) extractIUnikernelArch() error {
 	if unikernelPath == "" {
 		return fmt.Errorf("unikernel defined by annotation was not copied in image rootfs")
 	}
+	i.filePath = unikernelPath
 
 	elfFile, err := elf.Open(unikernelPath)
 	if err == nil {
@@ -348,5 +355,17 @@ func (i *BimaImage) SetArchitecture() error {
 		return err
 	}
 	i.Image = &newImg
+	return nil
+}
+
+func (i *BimaImage) SetVersion() error {
+	imageVer, err := utils.GetUnikraftVersion(i.filePath)
+	if err != nil {
+		fmt.Printf("It is not a unikraft unikernel")
+		return nil
+	}
+	i.Version = string(imageVer)
+
+	//fmt.Printf("Version: %v", i.Version)
 	return nil
 }

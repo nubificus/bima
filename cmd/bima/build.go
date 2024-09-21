@@ -225,6 +225,12 @@ func buildImage(buildContext string, file string) (*image.BimaImage, error) {
 		return nil, err
 	}
 
+	// check if arch was defined, if not use the host's arch
+	err = img.SetVersion()
+	if err != nil {
+		return nil, err
+	}
+
 	// add cmd
 	err = img.AddCmd()
 	if err != nil {

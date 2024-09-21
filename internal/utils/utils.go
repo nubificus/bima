@@ -16,8 +16,11 @@ package utils
 
 import (
 	"bufio"
+	"encoding/binary"
 	"encoding/base64"
 	"os"
+	"fmt"
+	"debug/elf"
 )
 
 // FileExists checks if a file exists and is indeed a file.
@@ -96,4 +99,103 @@ func Base64Decode(encodedData string) (string, error) {
 	}
 
 	return string(decodedBytes), nil
+}
+
+// UKLibraryInfoRecord holds the information parsed from the library info record
+type UKLibraryInfoRecord struct {
+	Type    uint16
+	Data    []byte
+}
+
+// UKLibraryInfoHeader holds the information parsed from the library info header
+type UKLibraryInfoHeader struct {
+	Version uint16
+	Records []UKLibraryInfoRecord
+}
+
+// parseUKLibInfo parses the data from the uklibinfo section
+func parseUKLibInfo(data []byte) ([]UKLibraryInfoHeader, error) {
+	var headers []UKLibraryInfoHeader
+	offset := 0
+
+	for offset < len(data) {
+		if len(data[offset:]) < 6 {
+			return nil, fmt.Errorf("incomplete header")
+		}
+		hdrLen := binary.LittleEndian.Uint32(data[offset:])
+		hdrVersion := binary.LittleEndian.Uint16(data[offset+4:])
+		offset += 6
+
+		header := UKLibraryInfoHeader{Version: hdrVersion}
+
+		recEnd := offset + int(hdrLen)-6
+		for offset < recEnd {
+			if len(data[offset:]) < 6 {
+				return nil, fmt.Errorf("incomplete record")
+			}
+			recType := binary.LittleEndian.Uint16(data[offset:])
+			recLen := binary.LittleEndian.Uint32(data[offset+2:])
+			if recType != 0x0007 {
+				offset += int(recLen)
+				continue
+			}
+			offset += 6
+
+			record := UKLibraryInfoRecord{
+				Type: recType,
+				Data: data[offset : offset+int(recLen)-6],
+			}
+			header.Records = append(header.Records, record)
+			offset += int(recLen) - 6
+		}
+
+		headers = append(headers, header)
+	}
+	return headers, nil
+}
+
+// uklibinfoELFLoad loads the uklibinfo section from the ELF binary
+func uklibinfoELFLoad(filePath string) ([]byte, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	e, err := elf.NewFile(f)
+	if err != nil {
+		return nil, err
+	}
+
+	section := e.Section(".uk_libinfo")
+	if section == nil {
+		return nil, fmt.Errorf("section .uk_libinfo not found")
+	}
+	return section.Data()
+}
+
+func GetUnikraftVersion(filePath string) ([]byte, error) {
+
+	uklibinfo, err := uklibinfoELFLoad(filePath)
+	if err != nil {
+		fmt.Errorf("Failed to load uklibinfo data: %v", err)
+		return nil, err
+	}
+
+	headers, err := parseUKLibInfo(uklibinfo)
+	if err != nil {
+		fmt.Errorf("Failed to parse uklibinfo data: %v", err)
+		return nil, err
+	}
+
+	for _, header := range headers {
+		for _, record := range header.Records {
+			if record.Type == 0x0007 { // VERSION
+	//			fmt.Printf("Type: %v\n", record.Type)
+	//			fmt.Printf("Version: %s\n", string(record.Data))
+				return record.Data, nil
+			}
+		}
+	}
+	return nil, err
 }
