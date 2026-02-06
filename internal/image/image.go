@@ -23,6 +23,7 @@ import (
 
 	"debug/elf"
 	"debug/pe"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -35,6 +36,7 @@ import (
 func baseImage() (*v1.Image, error) {
 	newImage := empty.Image
 	ociConfigFile, err := partial.ConfigFile(newImage)
+	ociConfigFile.Created = v1.Time{time.Now()}
 	if err != nil {
 		return nil, err
 	}
